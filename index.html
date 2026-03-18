@@ -304,7 +304,8 @@ function startApp() {
   document.getElementById('app').style.display = 'flex';
   document.getElementById('d-op').textContent = OP;
   initQR();
-  loadOrd();
+  // Carica tutti gli ordini all'avvio e salva in cache locale
+  loadAndCacheOrdini();
 }
 
 // ═══ QR SCANNER ═══
@@ -354,20 +355,15 @@ function onScan(text) {
   searchOrdine(text);
 }
 
-// ═══ SEARCH ═══
+// ═══ SEARCH — cerca nei dati locali, istantaneo ═══
 function searchOrdine(id) {
-  showL('Ricerca ' + id + '...');
-  jsonp({ action: 'getOrdine', id: id })
-    .then(function(d) {
-      hideL();
-      if (d.ok) { cur = d.ordine; showRes(d.ordine); }
-      else showNF(id);
-    })
-    .catch(function(e) {
-      hideL();
-      toast('Errore: ' + e.message, 'er');
-      resetScan();
-    });
+  var found = ordini.find(function(o) { return o.id === id; });
+  if (found) {
+    cur = found;
+    showRes(found);
+  } else {
+    showNF(id);
+  }
 }
 
 function showRes(o) {
@@ -405,8 +401,10 @@ function doOk() {
       if (d.ok) {
         addLog(cur.id, cur.destinatario + ' — ' + cur.luogo_scarico, 'ok');
         toast('✓ ' + cur.id + ' caricato!', 'ok');
+        // Aggiorna cache locale
         var c = ordini.find(function(x) { return x.id === cur.id; });
         if (c) c.scan_stato = 'caricato';
+        localStorage.setItem('nt_ordini', JSON.stringify(ordini));
       } else {
         toast('Errore: ' + d.error, 'er');
       }
@@ -424,6 +422,10 @@ function doErr() {
         addLog(cur.id, cur.destinatario + ' — ' + cur.luogo_scarico, 'err');
         toast('✕ Errore segnalato', 'er');
         if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
+        // Aggiorna cache locale
+        var c = ordini.find(function(x) { return x.id === cur.id; });
+        if (c) c.scan_stato = 'errore';
+        localStorage.setItem('nt_ordini', JSON.stringify(ordini));
       } else {
         toast('Errore: ' + d.error, 'er');
       }
@@ -443,12 +445,43 @@ function resetScan() {
 }
 
 // ═══ ORDINI ═══
+// ═══ CARICA E SALVA ORDINI IN CACHE ═══
+function loadAndCacheOrdini() {
+  // Mostra subito i dati dalla cache se disponibili
+  var cached = localStorage.getItem('nt_ordini');
+  if (cached) {
+    try {
+      ordini = JSON.parse(cached);
+      rOrd();
+    } catch(e) {}
+  }
+
+  // Poi aggiorna dal server in background
+  jsonp({ action: 'getOrdini' })
+    .then(function(d) {
+      if (d.ok) {
+        ordini = d.ordini;
+        localStorage.setItem('nt_ordini', JSON.stringify(ordini));
+        rOrd();
+        document.getElementById('d-dot').classList.remove('off');
+        toast('✓ ' + ordini.length + ' ordini sincronizzati', 'ok');
+      }
+    })
+    .catch(function(e) {
+      if (ordini.length > 0) {
+        toast('Offline — uso dati salvati', 'er');
+      }
+      document.getElementById('d-dot').classList.add('off');
+    });
+}
+
 function loadOrd() {
   document.getElementById('olist').innerHTML = '<div style="text-align:center;padding:40px;color:var(--dim)">Caricamento...</div>';
   jsonp({ action: 'getOrdini' })
     .then(function(d) {
       if (d.ok) {
         ordini = d.ordini;
+        localStorage.setItem('nt_ordini', JSON.stringify(ordini));
         rOrd();
         document.getElementById('d-dot').classList.remove('off');
       } else {
@@ -456,7 +489,14 @@ function loadOrd() {
       }
     })
     .catch(function(e) {
-      document.getElementById('olist').innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">Offline</div>';
+      // Usa cache se disponibile
+      var cached = localStorage.getItem('nt_ordini');
+      if (cached) {
+        try { ordini = JSON.parse(cached); rOrd(); } catch(ex) {}
+        toast('Offline — dati dalla cache', 'er');
+      } else {
+        document.getElementById('olist').innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">Offline</div>';
+      }
       document.getElementById('d-dot').classList.add('off');
     });
 }
