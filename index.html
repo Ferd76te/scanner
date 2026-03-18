@@ -8,324 +8,295 @@
 <meta name="theme-color" content="#0f1117">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Napolitrans">
-<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%230f1117' width='100' height='100' rx='20'/><text y='68' x='50' text-anchor='middle' font-size='55'>🚛</text></svg>">
 <title>Napolitrans Scanner</title>
-
-<!-- QR Scanner -->
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-<!-- PWA Manifest inline -->
-<link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIk5hcG9saXRyYW5zIFNjYW5uZXIiLAogICJzaG9ydF9uYW1lIjogIlNjYW5uZXIiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiIzBmMTExNyIsCiAgInRoZW1lX2NvbG9yIjogIiMwZjExMTciLAogICJpY29ucyI6IFtdCn0=">
-
 <style>
-:root {
-  --bg: #0f1117; --surface: #1a1d27; --surface2: #232733; --border: #2e3345;
-  --text: #e8eaf0; --dim: #8b90a5; --accent: #4e8cff; --green: #34d399;
-  --orange: #f59e0b; --red: #ef4444;
-}
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; overflow: hidden; }
-body {
-  font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text);
-  display: flex; flex-direction: column;
-}
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#232733;--border:#2e3345;--text:#e8eaf0;--dim:#8b90a5;--accent:#4e8cff;--green:#34d399;--orange:#f59e0b;--red:#ef4444}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
 
-/* ─── STATUS BAR ─── */
-.status-bar {
-  padding: max(env(safe-area-inset-top), 8px) 16px 10px;
-  background: var(--surface); border-bottom: 1px solid var(--border);
-  display: flex; justify-content: space-between; align-items: center;
-  flex-shrink: 0;
-}
-.app-title { font-size: 17px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
-.conn-info { display: flex; align-items: center; gap: 8px; }
-.operator-name {
-  font-size: 11px; color: var(--dim); font-weight: 600;
-  background: var(--surface2); padding: 4px 10px; border-radius: 8px;
-  max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.connection-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; flex-shrink: 0; }
-.connection-dot.offline { background: var(--red); animation: none; }
-@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+.status-bar{padding:max(env(safe-area-inset-top),8px) 16px 10px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.app-title{font-size:17px;font-weight:700;display:flex;align-items:center;gap:8px}
+.conn-info{display:flex;align-items:center;gap:8px}
+.operator-name{font-size:11px;color:var(--dim);font-weight:600;background:var(--surface2);padding:4px 10px;border-radius:8px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0}
+.dot.off{background:var(--red);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-/* ─── TABS ─── */
-.tab-bar { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.tab {
-  flex: 1; padding: 11px 0; text-align: center; font-size: 13px; font-weight: 600;
-  color: var(--dim); border-bottom: 2px solid transparent; cursor: pointer;
-}
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-bar{display:flex;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.tab{flex:1;padding:11px 0;text-align:center;font-size:13px;font-weight:600;color:var(--dim);border-bottom:2px solid transparent;cursor:pointer}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 
-/* ─── PAGES ─── */
-.page-container { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.page { display: none; padding: 14px 14px max(env(safe-area-inset-bottom, 16px), 16px); }
-.page.active { display: block; }
+.pages{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.page{display:none;padding:14px 14px 30px}.page.active{display:block}
 
-/* ─── SCANNER ─── */
-#qr-reader { width: 100%; border-radius: 14px; overflow: hidden; margin-bottom: 12px; background: #000; }
-#qr-reader video { border-radius: 14px; }
-#qr-reader__dashboard, #qr-reader__header_message { display: none !important; }
-.scan-hint { text-align: center; font-size: 13px; color: var(--dim); margin-bottom: 12px; }
-.scanner-controls { display: flex; gap: 8px; margin-bottom: 14px; }
-.ctrl-btn {
-  flex: 1; padding: 10px; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 10px; color: var(--text); font-family: 'DM Sans', sans-serif;
-  font-size: 12px; font-weight: 600; cursor: pointer; text-align: center;
-}
-.ctrl-btn:active { background: var(--surface2); }
-.ctrl-btn.active { border-color: var(--accent); color: var(--accent); }
+#qr-reader{width:100%;border-radius:14px;overflow:hidden;margin-bottom:12px;background:#000}
+#qr-reader video{border-radius:14px}
+#qr-reader__dashboard,#qr-reader__header_message{display:none!important}
+.scan-hint{text-align:center;font-size:13px;color:var(--dim);margin-bottom:12px}
 
-/* ─── RESULT CARD ─── */
-.scan-result {
-  display: none; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 14px; padding: 16px; animation: slideUp .25s ease;
-}
-.scan-result.show { display: block; }
-@keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.manual-input{display:flex;gap:8px;margin-bottom:14px}
+.manual-input input{flex:1;padding:11px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;outline:none}
+.manual-input input:focus{border-color:var(--accent)}
+.manual-input input::placeholder{color:var(--dim);font-family:'DM Sans',sans-serif;font-size:13px}
+.manual-input button{padding:11px 18px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
 
-.result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-.result-id { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--accent); }
-.result-badge { font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 16px; text-transform: uppercase; letter-spacing: .5px; }
-.badge-attesa { background: rgba(245,158,11,.15); color: var(--orange); }
-.badge-caricato { background: rgba(52,211,153,.15); color: var(--green); }
-.badge-errore, .badge-not-found { background: rgba(239,68,68,.15); color: var(--red); }
+.controls{display:flex;gap:8px;margin-bottom:14px}
+.ctrl{flex:1;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-align:center}
+.ctrl:active{background:var(--surface2)}.ctrl.on{border-color:var(--accent);color:var(--accent)}
 
-.result-details { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
-.result-item label { font-size: 9px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; }
-.result-item .value { font-size: 15px; font-weight: 700; color: var(--text); margin-top: 1px; }
-.result-item.full { grid-column: 1 / -1; }
-.result-item.full .value { font-size: 20px; }
+.result{display:none;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;animation:up .25s ease}
+.result.show{display:block}
+@keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.result-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.r-id{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:700;color:var(--accent)}
+.badge{font-size:10px;font-weight:700;padding:4px 10px;border-radius:16px;text-transform:uppercase;letter-spacing:.5px}
+.b-wait{background:rgba(245,158,11,.15);color:var(--orange)}
+.b-done{background:rgba(52,211,153,.15);color:var(--green)}
+.b-err,.b-nf{background:rgba(239,68,68,.15);color:var(--red)}
+.r-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.r-item label{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px}
+.r-item .val{font-size:15px;font-weight:700;color:var(--text);margin-top:1px}
+.r-item.full{grid-column:1/-1}.r-item.full .val{font-size:20px}
+.actions{display:flex;gap:8px}
+.btn{flex:1;padding:13px;border:none;border-radius:11px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn:active{transform:scale(.97)}
+.btn-ok{background:var(--green);color:#fff}
+.btn-no{background:var(--surface2);color:var(--red);border:1px solid var(--border)}
+.btn-new{width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px}
 
-.action-buttons { display: flex; gap: 8px; }
-.btn {
-  flex: 1; padding: 13px; border: none; border-radius: 11px; font-family: 'DM Sans', sans-serif;
-  font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center;
-  justify-content: center; gap: 6px;
-}
-.btn:active { transform: scale(.97); }
-.btn-confirm { background: var(--green); color: #fff; }
-.btn-wrong { background: var(--surface2); color: var(--red); border: 1px solid var(--border); }
-.btn-new-scan { width: 100%; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.stitle{font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1.5px}
+.rbtn{padding:5px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--dim);font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+.pbox{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+.plbl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.plbl .cnt{color:var(--green);font-weight:700;font-family:'JetBrains Mono',monospace}
+.ptrack{height:7px;background:var(--border);border-radius:4px;overflow:hidden}
+.pfill{height:100%;background:linear-gradient(90deg,var(--green),var(--accent));border-radius:4px;transition:width .4s ease}
+.ocard{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.oinfo{flex:1;min-width:0}.oinfo .cl{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.oinfo .ds{font-size:11px;color:var(--dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ochk{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.ochk.done{background:rgba(52,211,153,.15);color:var(--green)}
+.ochk.pend{background:var(--surface2);border:2px solid var(--border)}
+.ochk.err{background:rgba(239,68,68,.15);color:var(--red)}
 
-/* ─── ORDINI ─── */
-.ordini-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.section-title { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 1.5px; }
-.refresh-btn { padding: 5px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--dim); font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.lentry{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:12px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.licon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.licon.ok{background:rgba(52,211,153,.15);color:var(--green)}.licon.er{background:rgba(239,68,68,.15);color:var(--red)}
+.linfo{flex:1;min-width:0}.linfo .lid{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700}
+.linfo .ldet{font-size:11px;color:var(--dim);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ltime{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--dim);flex-shrink:0}
+.empty{text-align:center;padding:50px 20px;color:var(--dim)}.empty .ei{font-size:40px;margin-bottom:10px}.empty .et{font-size:15px;font-weight:700;color:var(--text)}
 
-.progress-box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
-.progress-label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
-.progress-label .count { color: var(--green); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
-.progress-track { height: 7px; background: var(--border); border-radius: 4px; overflow: hidden; }
-.progress-fill { height: 100%; background: linear-gradient(90deg, var(--green), var(--accent)); border-radius: 4px; transition: width .4s ease; }
+.setup{position:fixed;inset:0;background:var(--bg);z-index:300;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:30px 20px}
+.setup.hidden{display:none}
+.sfield{width:100%;max-width:340px;margin-bottom:14px}
+.sfield label{font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:5px}
+.sfield input{width:100%;padding:13px 14px;background:var(--surface);border:1px solid var(--border);border-radius:11px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none}
+.sfield input:focus{border-color:var(--accent)}
+.sfield input::placeholder{color:var(--dim)}
+.sbtn{width:100%;max-width:340px;padding:15px;background:var(--accent);color:#fff;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
+.sbtn:disabled{opacity:.5}
+.serr{color:var(--red);font-size:12px;margin-top:10px;max-width:340px;text-align:center}
+.shint{color:var(--dim);font-size:11px;margin-top:14px;max-width:340px;text-align:center;line-height:1.5}
 
-.ordine-card { background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 12px; margin-bottom: 7px; display: flex; align-items: center; gap: 10px; }
-.ordine-info { flex: 1; min-width: 0; }
-.ordine-info .client { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ordine-info .dest { font-size: 11px; color: var(--dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ordine-check { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; }
-.ordine-check.done { background: rgba(52,211,153,.15); color: var(--green); }
-.ordine-check.pending { background: var(--surface2); border: 2px solid var(--border); }
-.ordine-check.error { background: rgba(239,68,68,.15); color: var(--red); }
-
-/* ─── LOG ─── */
-.log-entry { background: var(--surface); border: 1px solid var(--border); border-radius: 11px; padding: 12px; margin-bottom: 7px; display: flex; align-items: center; gap: 10px; }
-.log-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-.log-icon.ok { background: rgba(52,211,153,.15); color: var(--green); }
-.log-icon.err { background: rgba(239,68,68,.15); color: var(--red); }
-.log-info { flex: 1; min-width: 0; }
-.log-info .log-id { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; }
-.log-info .log-detail { font-size: 11px; color: var(--dim); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.log-time { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--dim); flex-shrink: 0; }
-
-.empty-state { text-align: center; padding: 50px 20px; color: var(--dim); }
-.empty-state .icon { font-size: 40px; margin-bottom: 10px; }
-.empty-state .title { font-size: 15px; font-weight: 700; color: var(--text); }
-
-/* ─── SETUP ─── */
-.setup-overlay {
-  position: fixed; inset: 0; background: var(--bg); z-index: 300;
-  display: flex; align-items: center; justify-content: center; flex-direction: column; padding: 30px 20px;
-}
-.setup-overlay.hidden { display: none; }
-.setup-field { width: 100%; max-width: 340px; margin-bottom: 14px; }
-.setup-field label { font-size: 10px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 5px; }
-.setup-field input {
-  width: 100%; padding: 13px 14px; background: var(--surface); border: 1px solid var(--border);
-  border-radius: 11px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none;
-}
-.setup-field input:focus { border-color: var(--accent); }
-.setup-field input::placeholder { color: var(--dim); }
-.setup-btn {
-  width: 100%; max-width: 340px; padding: 15px; background: var(--accent); color: #fff;
-  border: none; border-radius: 12px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; cursor: pointer;
-}
-.setup-btn:disabled { opacity: .5; }
-.setup-error { color: var(--red); font-size: 12px; margin-top: 10px; max-width: 340px; text-align: center; }
-.setup-hint { color: var(--dim); font-size: 11px; margin-top: 14px; max-width: 340px; text-align: center; line-height: 1.5; }
-
-/* ─── OVERLAYS ─── */
-.loading-overlay { display: none; position: fixed; inset: 0; background: rgba(15,17,23,.85); z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 10px; }
-.loading-overlay.show { display: flex; }
-.spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-text { font-size: 13px; color: var(--dim); }
-
-.toast {
-  position: fixed; bottom: max(env(safe-area-inset-bottom, 20px), 20px); left: 50%;
-  transform: translateX(-50%) translateY(80px); padding: 12px 22px; border-radius: 12px;
-  font-size: 13px; font-weight: 700; opacity: 0; transition: all .25s; z-index: 150;
-  text-align: center; min-width: 240px; max-width: 90vw;
-}
-.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
-.toast.success { background: var(--green); color: #fff; }
-.toast.error { background: var(--red); color: #fff; }
+.loading{display:none;position:fixed;inset:0;background:rgba(15,17,23,.85);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+.loading.show{display:flex}
+.spin{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}.ltxt{font-size:13px;color:var(--dim)}
+.toast{position:fixed;bottom:max(env(safe-area-inset-bottom,20px),20px);left:50%;transform:translateX(-50%) translateY(80px);padding:12px 22px;border-radius:12px;font-size:13px;font-weight:700;opacity:0;transition:all .25s;z-index:150;text-align:center;min-width:240px;max-width:90vw}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}.toast.ok{background:var(--green);color:#fff}.toast.er{background:var(--red);color:#fff}
 </style>
 </head>
 <body>
 
-<!-- ═══ SETUP SCREEN ═══ -->
-<div id="setup" class="setup-overlay">
-  <div style="font-size:52px;margin-bottom:10px;">🚛</div>
-  <div style="font-size:22px;font-weight:800;margin-bottom:4px;">Napolitrans</div>
-  <div style="font-size:13px;color:var(--dim);margin-bottom:28px;">Scanner magazzino</div>
-
-  <div class="setup-field">
+<!-- SETUP -->
+<div id="setup" class="setup">
+  <div style="font-size:52px;margin-bottom:10px">🚛</div>
+  <div style="font-size:22px;font-weight:800;margin-bottom:4px">Napolitrans</div>
+  <div style="font-size:13px;color:var(--dim);margin-bottom:28px">Scanner magazzino</div>
+  <div class="sfield">
     <label>URL Web App</label>
     <input type="url" id="s-url" placeholder="https://script.google.com/macros/s/.../exec">
   </div>
-  <div class="setup-field">
+  <div class="sfield">
     <label>Nome operatore</label>
     <input type="text" id="s-op" placeholder="Es: Mario">
   </div>
-  <button class="setup-btn" id="s-btn" onclick="doSetup()">Connetti</button>
-  <div class="setup-error" id="s-err"></div>
-  <div class="setup-hint">L'URL lo trovi in Apps Script → Deploy → Gestisci deployment</div>
+  <button class="sbtn" id="s-btn" onclick="doSetup()">Connetti</button>
+  <div class="serr" id="s-err"></div>
+  <div class="shint">L'URL lo trovi in Apps Script → Deploy → Gestisci deployment</div>
 </div>
 
-<!-- ═══ APP ═══ -->
-<div id="app" style="display:none;flex:1;display:flex;flex-direction:column;height:100%;">
-
+<!-- APP -->
+<div id="app" style="display:none;flex-direction:column;height:100%">
   <div class="status-bar">
     <div class="app-title"><span>🚛</span> <span>Scanner</span></div>
     <div class="conn-info">
       <span class="operator-name" id="d-op"></span>
-      <div class="connection-dot" id="d-dot"></div>
+      <div class="dot" id="d-dot"></div>
     </div>
   </div>
-
   <div class="tab-bar">
-    <div class="tab active" onclick="switchTab('scanner',this)">📷 Scanner</div>
-    <div class="tab" onclick="switchTab('ordini',this)">📦 Ordini</div>
-    <div class="tab" onclick="switchTab('log',this)">📋 Log</div>
+    <div class="tab active" onclick="swTab('scanner',this)">📷 Scanner</div>
+    <div class="tab" onclick="swTab('ordini',this)">📦 Ordini</div>
+    <div class="tab" onclick="swTab('log',this)">📋 Log</div>
   </div>
-
-  <div class="page-container">
-
-    <!-- SCANNER -->
-    <div id="page-scanner" class="page active">
+  <div class="pages">
+    <div id="p-scanner" class="page active">
       <div id="qr-reader"></div>
-      <p class="scan-hint" id="scan-hint">Inquadra il QR code sull'etichetta</p>
-      <div class="scanner-controls">
-        <button class="ctrl-btn active" onclick="toggleScan()" id="btn-tog">⏸ Pausa</button>
-        <button class="ctrl-btn" onclick="document.getElementById('setup').classList.remove('hidden');document.getElementById('setup').style.display='flex';">⚙️ Config</button>
+      <p class="scan-hint" id="hint">Inquadra il QR code sull'etichetta</p>
+      <div class="manual-input">
+        <input type="text" id="manual-id" placeholder="Oppure scrivi ID ordine...">
+        <button onclick="manualSearch()">Cerca</button>
       </div>
-      <div class="scan-result" id="scan-result">
-        <div class="result-header">
-          <span class="result-id" id="r-id"></span>
-          <span class="result-badge" id="r-badge"></span>
+      <div class="controls">
+        <button class="ctrl on" onclick="togScan()" id="btn-tog">⏸ Pausa</button>
+        <button class="ctrl" onclick="showSetup()">⚙️ Config</button>
+      </div>
+      <div class="result" id="result">
+        <div class="result-hdr">
+          <span class="r-id" id="r-id"></span>
+          <span class="badge" id="r-badge"></span>
         </div>
-        <div class="result-details">
-          <div class="result-item"><label>Committente</label><div class="value" id="r-comm"></div></div>
-          <div class="result-item"><label>Data Scarico</label><div class="value" id="r-data"></div></div>
-          <div class="result-item full"><label>Destinazione</label><div class="value" id="r-dest"></div></div>
+        <div class="r-grid">
+          <div class="r-item"><label>Committente</label><div class="val" id="r-comm"></div></div>
+          <div class="r-item"><label>Data Scarico</label><div class="val" id="r-data"></div></div>
+          <div class="r-item full"><label>Destinazione</label><div class="val" id="r-dest"></div></div>
         </div>
-        <div class="action-buttons" id="r-actions">
-          <button class="btn btn-confirm" onclick="doConferma()">✓ Caricato</button>
-          <button class="btn btn-wrong" onclick="doErrore()">✕ Errore</button>
+        <div class="actions" id="r-act">
+          <button class="btn btn-ok" onclick="doOk()">✓ Caricato</button>
+          <button class="btn btn-no" onclick="doErr()">✕ Errore</button>
         </div>
-        <button class="btn btn-new-scan" onclick="resetScan()">📷 Nuova scansione</button>
+        <button class="btn-new" onclick="resetScan()">📷 Nuova scansione</button>
       </div>
     </div>
-
-    <!-- ORDINI -->
-    <div id="page-ordini" class="page">
-      <div class="ordini-header">
-        <span class="section-title">Ordini</span>
-        <button class="refresh-btn" onclick="loadOrdini()">↻ Aggiorna</button>
+    <div id="p-ordini" class="page">
+      <div class="hdr"><span class="stitle">Ordini</span><button class="rbtn" onclick="loadOrd()">↻ Aggiorna</button></div>
+      <div class="pbox">
+        <div class="plbl"><span style="color:var(--dim)">Caricati</span><span class="cnt" id="pc">0/0</span></div>
+        <div class="ptrack"><div class="pfill" id="pb" style="width:0%"></div></div>
       </div>
-      <div class="progress-box">
-        <div class="progress-label"><span style="color:var(--dim)">Caricati</span><span class="count" id="p-count">0/0</span></div>
-        <div class="progress-track"><div class="progress-fill" id="p-bar" style="width:0%"></div></div>
-      </div>
-      <div id="ordini-list"></div>
+      <div id="olist"></div>
     </div>
-
-    <!-- LOG -->
-    <div id="page-log" class="page">
-      <div class="ordini-header">
-        <span class="section-title">Log scansioni</span>
-        <button class="refresh-btn" onclick="renderLog()">↻</button>
-      </div>
-      <div id="log-list"><div class="empty-state"><div class="icon">📋</div><div class="title">Nessuna scansione</div></div></div>
+    <div id="p-log" class="page">
+      <div class="hdr"><span class="stitle">Log scansioni</span><button class="rbtn" onclick="rLog()">↻</button></div>
+      <div id="llist"><div class="empty"><div class="ei">📋</div><div class="et">Nessuna scansione</div></div></div>
     </div>
-
   </div>
 </div>
 
-<div class="loading-overlay" id="loading"><div class="spinner"></div><div class="loading-text" id="l-text">...</div></div>
+<div class="loading" id="ld"><div class="spin"></div><div class="ltxt" id="lt">...</div></div>
 <div class="toast" id="toast"></div>
 
 <script>
 // ═══ STATE ═══
-let API = localStorage.getItem('nt_url') || '';
-let OP = localStorage.getItem('nt_op') || '';
-let qr = null, active = false, cur = null, ordini = [];
-let log = JSON.parse(localStorage.getItem('nt_log') || '[]');
-let lastT = 0;
+var API = localStorage.getItem('nt_url') || '';
+var OP = localStorage.getItem('nt_op') || '';
+var scanner = null, scanning = false, cur = null, ordini = [];
+var logData = JSON.parse(localStorage.getItem('nt_log') || '[]');
+var lastScan = 0;
+var cbCounter = 0;
 
-// ═══ JSONP: bypassa CORS con Google Apps Script ═══
-function gasCall(params) {
-  return new Promise((resolve, reject) => {
-    const cb = '_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-    const timeout = setTimeout(() => { delete window[cb]; reject(new Error('Timeout')); }, 15000);
-    window[cb] = function(data) {
-      clearTimeout(timeout);
-      delete window[cb];
+// ═══ JSONP ENGINE ═══
+// Usa tag <script> invece di fetch() → bypassa CORS completamente
+function jsonp(params) {
+  return new Promise(function(resolve, reject) {
+    var cbName = '_ntcb_' + (++cbCounter) + '_' + Date.now();
+
+    // Timeout dopo 15 secondi
+    var timer = setTimeout(function() {
+      cleanup();
+      reject(new Error('Timeout — riprova'));
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (scriptEl && scriptEl.parentNode) scriptEl.parentNode.removeChild(scriptEl);
+    }
+
+    // Registra callback globale
+    window[cbName] = function(data) {
+      cleanup();
       resolve(data);
     };
-    const url = API + '?' + Object.entries({ ...params, callback: cb }).map(([k,v]) => k + '=' + encodeURIComponent(v)).join('&');
-    const s = document.createElement('script');
-    s.src = url;
-    s.onerror = () => { clearTimeout(timeout); delete window[cb]; reject(new Error('Rete non disponibile')); };
-    document.head.appendChild(s);
-    s.onload = () => s.remove();
+
+    // Costruisci URL con parametri
+    params.callback = cbName;
+    var pairs = [];
+    for (var k in params) {
+      if (params.hasOwnProperty(k)) {
+        pairs.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
+      }
+    }
+    var url = API + '?' + pairs.join('&');
+
+    // Crea tag script
+    var scriptEl = document.createElement('script');
+    scriptEl.src = url;
+    scriptEl.onerror = function() {
+      cleanup();
+      reject(new Error('Rete non disponibile'));
+    };
+    document.head.appendChild(scriptEl);
   });
 }
 
 // ═══ INIT ═══
-window.addEventListener('DOMContentLoaded', () => {
-  if (API && OP) startApp();
-  else { document.getElementById('s-url').value = API; document.getElementById('s-op').value = OP; }
+window.addEventListener('DOMContentLoaded', function() {
+  if (API && OP) {
+    document.getElementById('s-url').value = API;
+    document.getElementById('s-op').value = OP;
+    startApp();
+  }
 });
 
 // ═══ SETUP ═══
-async function doSetup() {
-  const url = document.getElementById('s-url').value.trim().replace(/\/+$/, '');
-  const op = document.getElementById('s-op').value.trim();
-  const err = document.getElementById('s-err');
+function showSetup() {
+  document.getElementById('s-url').value = API;
+  document.getElementById('s-op').value = OP;
+  document.getElementById('setup').style.display = 'flex';
+}
+
+function doSetup() {
+  var url = document.getElementById('s-url').value.trim().replace(/\/+$/, '');
+  var op = document.getElementById('s-op').value.trim();
+  var err = document.getElementById('s-err');
   err.textContent = '';
+
   if (!url || !op) { err.textContent = 'Compila entrambi i campi'; return; }
+
   document.getElementById('s-btn').disabled = true;
   document.getElementById('s-btn').textContent = 'Connessione...';
-  API = url; // temporaneo per gasCall
-  try {
-    const d = await gasCall({ action: 'ping' });
-    if (d.ok) { OP = op; localStorage.setItem('nt_url', url); localStorage.setItem('nt_op', op); startApp(); }
-    else { err.textContent = 'Errore: ' + (d.error || 'risposta non valida'); API = ''; }
-  } catch(e) { err.textContent = 'Connessione fallita: ' + e.message; API = ''; }
-  document.getElementById('s-btn').disabled = false;
-  document.getElementById('s-btn').textContent = 'Connetti';
+
+  // Salva temporaneamente per il test
+  var oldAPI = API;
+  API = url;
+
+  jsonp({ action: 'ping' })
+    .then(function(d) {
+      if (d && d.ok) {
+        OP = op;
+        localStorage.setItem('nt_url', url);
+        localStorage.setItem('nt_op', op);
+        startApp();
+      } else {
+        err.textContent = 'Risposta non valida dal server';
+        API = oldAPI;
+      }
+      document.getElementById('s-btn').disabled = false;
+      document.getElementById('s-btn').textContent = 'Connetti';
+    })
+    .catch(function(e) {
+      err.textContent = 'Connessione fallita: ' + e.message;
+      API = oldAPI;
+      document.getElementById('s-btn').disabled = false;
+      document.getElementById('s-btn').textContent = 'Connetti';
+    });
 }
 
 function startApp() {
@@ -333,38 +304,70 @@ function startApp() {
   document.getElementById('app').style.display = 'flex';
   document.getElementById('d-op').textContent = OP;
   initQR();
-  loadOrdini();
+  loadOrd();
 }
 
 // ═══ QR SCANNER ═══
 function initQR() {
-  if (qr) { try { qr.stop(); } catch(e) {} }
-  qr = new Html5Qrcode('qr-reader');
-  qr.start(
+  if (scanner) { try { scanner.stop(); } catch(e) {} }
+  scanner = new Html5Qrcode('qr-reader');
+  scanner.start(
     { facingMode: 'environment' },
     { fps: 10, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0 },
-    onScan, () => {}
-  ).then(() => { active = true; })
-   .catch(e => { document.getElementById('scan-hint').textContent = 'Errore fotocamera: ' + e; });
+    onScan,
+    function() {} // ignora errori continui
+  ).then(function() {
+    scanning = true;
+    document.getElementById('hint').textContent = 'Inquadra il QR code sull\'etichetta';
+  }).catch(function(e) {
+    document.getElementById('hint').textContent = 'Fotocamera non disponibile — usa il campo manuale';
+  });
 }
 
-function toggleScan() {
-  if (!qr) return;
-  if (active) { qr.pause(true); active = false; document.getElementById('btn-tog').textContent = '▶ Riprendi'; document.getElementById('btn-tog').classList.remove('active'); }
-  else { qr.resume(); active = true; document.getElementById('btn-tog').textContent = '⏸ Pausa'; document.getElementById('btn-tog').classList.add('active'); }
+function togScan() {
+  if (!scanner) return;
+  if (scanning) {
+    scanner.pause(true); scanning = false;
+    document.getElementById('btn-tog').textContent = '▶ Riprendi';
+    document.getElementById('btn-tog').classList.remove('on');
+  } else {
+    scanner.resume(); scanning = true;
+    document.getElementById('btn-tog').textContent = '⏸ Pausa';
+    document.getElementById('btn-tog').classList.add('on');
+  }
 }
 
-async function onScan(text) {
-  if (Date.now() - lastT < 2000) return;
-  lastT = Date.now();
+// ═══ MANUAL SEARCH ═══
+function manualSearch() {
+  var id = document.getElementById('manual-id').value.trim().toUpperCase();
+  if (!id) return;
+  document.getElementById('manual-id').value = '';
+  searchOrdine(id);
+}
+
+// ═══ ON QR SCAN ═══
+function onScan(text) {
+  if (Date.now() - lastScan < 2000) return;
+  lastScan = Date.now();
   if (navigator.vibrate) navigator.vibrate(100);
-  if (qr && active) { qr.pause(true); active = false; }
-  showL('Ricerca ' + text + '...');
-  try {
-    const d = await gasCall({ action: 'getOrdine', id: text });
-    hideL();
-    if (d.ok) { cur = d.ordine; showRes(d.ordine); } else showNF(text);
-  } catch(e) { hideL(); toast('Errore rete', 'error'); resetScan(); }
+  if (scanner && scanning) { scanner.pause(true); scanning = false; }
+  searchOrdine(text);
+}
+
+// ═══ SEARCH ═══
+function searchOrdine(id) {
+  showL('Ricerca ' + id + '...');
+  jsonp({ action: 'getOrdine', id: id })
+    .then(function(d) {
+      hideL();
+      if (d.ok) { cur = d.ordine; showRes(d.ordine); }
+      else showNF(id);
+    })
+    .catch(function(e) {
+      hideL();
+      toast('Errore: ' + e.message, 'er');
+      resetScan();
+    });
 }
 
 function showRes(o) {
@@ -372,11 +375,12 @@ function showRes(o) {
   document.getElementById('r-comm').textContent = o.committente;
   document.getElementById('r-dest').textContent = o.destinatario + ' — ' + o.luogo_scarico;
   document.getElementById('r-data').textContent = o.data_scarico;
-  const b = document.getElementById('r-badge'), a = document.getElementById('r-actions');
-  if (o.scan_stato === 'caricato') { b.textContent = 'Già caricato'; b.className = 'result-badge badge-caricato'; a.style.display = 'none'; }
-  else if (o.scan_stato && o.scan_stato.startsWith('errore')) { b.textContent = 'Errore'; b.className = 'result-badge badge-errore'; a.style.display = 'flex'; }
-  else { b.textContent = 'In attesa'; b.className = 'result-badge badge-attesa'; a.style.display = 'flex'; }
-  document.getElementById('scan-result').classList.add('show');
+  var b = document.getElementById('r-badge');
+  var a = document.getElementById('r-act');
+  if (o.scan_stato === 'caricato') { b.textContent = 'Già caricato'; b.className = 'badge b-done'; a.style.display = 'none'; }
+  else if (o.scan_stato && o.scan_stato.indexOf('errore') === 0) { b.textContent = 'Errore'; b.className = 'badge b-err'; a.style.display = 'flex'; }
+  else { b.textContent = 'In attesa'; b.className = 'badge b-wait'; a.style.display = 'flex'; }
+  document.getElementById('result').classList.add('show');
 }
 
 function showNF(id) {
@@ -385,83 +389,121 @@ function showNF(id) {
   document.getElementById('r-dest').textContent = 'NON TROVATO';
   document.getElementById('r-data').textContent = '-';
   document.getElementById('r-badge').textContent = 'Non trovato';
-  document.getElementById('r-badge').className = 'result-badge badge-not-found';
-  document.getElementById('r-actions').style.display = 'none';
-  document.getElementById('scan-result').classList.add('show');
+  document.getElementById('r-badge').className = 'badge b-nf';
+  document.getElementById('r-act').style.display = 'none';
+  document.getElementById('result').classList.add('show');
   if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
 }
 
-async function doConferma() {
-  if (!cur) return; showL('Salvataggio...');
-  try {
-    const d = await gasCall({ action: 'confermaCarico', id: cur.id, operatore: OP });
-    hideL();
-    if (d.ok) { addLog(cur.id, cur.destinatario + ' — ' + cur.luogo_scarico, 'ok'); toast('✓ ' + cur.id + ' caricato!', 'success'); const c = ordini.find(x => x.id === cur.id); if (c) c.scan_stato = 'caricato'; }
-    else toast('Errore: ' + d.error, 'error');
-  } catch(e) { hideL(); toast('Errore rete', 'error'); }
+// ═══ CONFERMA / ERRORE ═══
+function doOk() {
+  if (!cur) return;
+  showL('Salvataggio...');
+  jsonp({ action: 'confermaCarico', id: cur.id, operatore: OP })
+    .then(function(d) {
+      hideL();
+      if (d.ok) {
+        addLog(cur.id, cur.destinatario + ' — ' + cur.luogo_scarico, 'ok');
+        toast('✓ ' + cur.id + ' caricato!', 'ok');
+        var c = ordini.find(function(x) { return x.id === cur.id; });
+        if (c) c.scan_stato = 'caricato';
+      } else {
+        toast('Errore: ' + d.error, 'er');
+      }
+    })
+    .catch(function(e) { hideL(); toast('Errore: ' + e.message, 'er'); });
 }
 
-async function doErrore() {
-  if (!cur) return; showL('Segnalazione...');
-  try {
-    const d = await gasCall({ action: 'segnalaErrore', id: cur.id, operatore: OP, note: 'Bancale sbagliato' });
-    hideL();
-    if (d.ok) { addLog(cur.id, cur.destinatario + ' — ' + cur.luogo_scarico, 'err'); toast('✕ Errore segnalato', 'error'); if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]); }
-    else toast('Errore: ' + d.error, 'error');
-  } catch(e) { hideL(); toast('Errore rete', 'error'); }
+function doErr() {
+  if (!cur) return;
+  showL('Segnalazione...');
+  jsonp({ action: 'segnalaErrore', id: cur.id, operatore: OP, note: 'Bancale sbagliato' })
+    .then(function(d) {
+      hideL();
+      if (d.ok) {
+        addLog(cur.id, cur.destinatario + ' — ' + cur.luogo_scarico, 'err');
+        toast('✕ Errore segnalato', 'er');
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
+      } else {
+        toast('Errore: ' + d.error, 'er');
+      }
+    })
+    .catch(function(e) { hideL(); toast('Errore: ' + e.message, 'er'); });
 }
 
 function resetScan() {
-  cur = null; document.getElementById('scan-result').classList.remove('show');
-  if (qr && !active) { qr.resume(); active = true; document.getElementById('btn-tog').textContent = '⏸ Pausa'; document.getElementById('btn-tog').classList.add('active'); }
+  cur = null;
+  document.getElementById('result').classList.remove('show');
+  if (scanner && !scanning) {
+    try { scanner.resume(); scanning = true;
+      document.getElementById('btn-tog').textContent = '⏸ Pausa';
+      document.getElementById('btn-tog').classList.add('on');
+    } catch(e) {}
+  }
 }
 
 // ═══ ORDINI ═══
-async function loadOrdini() {
-  document.getElementById('ordini-list').innerHTML = '<div style="text-align:center;padding:40px;color:var(--dim)">Caricamento...</div>';
-  try {
-    const d = await gasCall({ action: 'getOrdini' });
-    if (d.ok) { ordini = d.ordini; renderOrdini(); document.getElementById('d-dot').classList.remove('offline'); }
-    else document.getElementById('ordini-list').innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">' + d.error + '</div>';
-  } catch(e) { document.getElementById('ordini-list').innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">Offline</div>'; document.getElementById('d-dot').classList.add('offline'); }
+function loadOrd() {
+  document.getElementById('olist').innerHTML = '<div style="text-align:center;padding:40px;color:var(--dim)">Caricamento...</div>';
+  jsonp({ action: 'getOrdini' })
+    .then(function(d) {
+      if (d.ok) {
+        ordini = d.ordini;
+        rOrd();
+        document.getElementById('d-dot').classList.remove('off');
+      } else {
+        document.getElementById('olist').innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">' + d.error + '</div>';
+      }
+    })
+    .catch(function(e) {
+      document.getElementById('olist').innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">Offline</div>';
+      document.getElementById('d-dot').classList.add('off');
+    });
 }
 
-function renderOrdini() {
-  const done = ordini.filter(o => o.scan_stato === 'caricato').length, tot = ordini.length;
-  document.getElementById('p-count').textContent = done + ' / ' + tot;
-  document.getElementById('p-bar').style.width = (tot > 0 ? done / tot * 100 : 0) + '%';
-  document.getElementById('ordini-list').innerHTML = ordini.map(o => {
-    const s = o.scan_stato === 'caricato' ? 'done' : (o.scan_stato && o.scan_stato.startsWith('errore') ? 'error' : 'pending');
-    return '<div class="ordine-card"><div class="ordine-info"><div class="client">' + o.destinatario + '</div><div class="dest">' + o.luogo_scarico + ' · ' + o.committente + '</div></div><div class="ordine-check ' + s + '">' + (s === 'done' ? '✓' : s === 'error' ? '✕' : '') + '</div></div>';
+function rOrd() {
+  var done = ordini.filter(function(o) { return o.scan_stato === 'caricato'; }).length;
+  var tot = ordini.length;
+  document.getElementById('pc').textContent = done + ' / ' + tot;
+  document.getElementById('pb').style.width = (tot > 0 ? done / tot * 100 : 0) + '%';
+  document.getElementById('olist').innerHTML = ordini.map(function(o) {
+    var s = o.scan_stato === 'caricato' ? 'done' : (o.scan_stato && o.scan_stato.indexOf('errore') === 0 ? 'err' : 'pend');
+    return '<div class="ocard"><div class="oinfo"><div class="cl">' + o.destinatario + '</div><div class="ds">' + o.luogo_scarico + ' · ' + o.committente + '</div></div><div class="ochk ' + s + '">' + (s === 'done' ? '✓' : s === 'err' ? '✕' : '') + '</div></div>';
   }).join('');
 }
 
 // ═══ LOG ═══
 function addLog(id, detail, type) {
-  const n = new Date(), t = n.getHours().toString().padStart(2, '0') + ':' + n.getMinutes().toString().padStart(2, '0');
-  log.unshift({ id, detail, type, time: t }); if (log.length > 50) log = log.slice(0, 50);
-  localStorage.setItem('nt_log', JSON.stringify(log));
+  var n = new Date();
+  var t = n.getHours().toString().padStart(2, '0') + ':' + n.getMinutes().toString().padStart(2, '0');
+  logData.unshift({ id: id, detail: detail, type: type, time: t });
+  if (logData.length > 50) logData = logData.slice(0, 50);
+  localStorage.setItem('nt_log', JSON.stringify(logData));
 }
 
-function renderLog() {
-  const el = document.getElementById('log-list');
-  if (!log.length) { el.innerHTML = '<div class="empty-state"><div class="icon">📋</div><div class="title">Nessuna scansione</div></div>'; return; }
-  el.innerHTML = log.map(e => '<div class="log-entry"><div class="log-icon ' + e.type + '">' + (e.type === 'ok' ? '✓' : '✕') + '</div><div class="log-info"><div class="log-id">' + e.id + '</div><div class="log-detail">' + e.detail + '</div></div><div class="log-time">' + e.time + '</div></div>').join('');
+function rLog() {
+  var el = document.getElementById('llist');
+  if (!logData.length) { el.innerHTML = '<div class="empty"><div class="ei">📋</div><div class="et">Nessuna scansione</div></div>'; return; }
+  el.innerHTML = logData.map(function(e) {
+    return '<div class="lentry"><div class="licon ' + (e.type === 'ok' ? 'ok' : 'er') + '">' + (e.type === 'ok' ? '✓' : '✕') + '</div><div class="linfo"><div class="lid">' + e.id + '</div><div class="ldet">' + e.detail + '</div></div><div class="ltime">' + e.time + '</div></div>';
+  }).join('');
 }
 
 // ═══ UI ═══
-function switchTab(tab, el) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  el.classList.add('active'); document.getElementById('page-' + tab).classList.add('active');
-  if (tab === 'ordini') loadOrdini(); if (tab === 'log') renderLog();
-  if (tab === 'scanner' && qr && !active) { qr.resume(); active = true; }
-  if (tab !== 'scanner' && qr && active) { qr.pause(true); active = false; }
+function swTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+  el.classList.add('active');
+  document.getElementById('p-' + tab).classList.add('active');
+  if (tab === 'ordini') loadOrd();
+  if (tab === 'log') rLog();
+  if (tab === 'scanner' && scanner && !scanning) { try { scanner.resume(); scanning = true; } catch(e) {} }
+  if (tab !== 'scanner' && scanner && scanning) { try { scanner.pause(true); scanning = false; } catch(e) {} }
 }
 
-function toast(m, t) { const e = document.getElementById('toast'); e.textContent = m; e.className = 'toast ' + t + ' show'; setTimeout(() => e.classList.remove('show'), 2500); }
-function showL(t) { document.getElementById('l-text').textContent = t; document.getElementById('loading').classList.add('show'); }
-function hideL() { document.getElementById('loading').classList.remove('show'); }
+function toast(m, t) { var e = document.getElementById('toast'); e.textContent = m; e.className = 'toast ' + t + ' show'; setTimeout(function() { e.classList.remove('show'); }, 2500); }
+function showL(t) { document.getElementById('lt').textContent = t; document.getElementById('ld').classList.add('show'); }
+function hideL() { document.getElementById('ld').classList.remove('show'); }
 </script>
 </body>
 </html>
