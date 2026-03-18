@@ -284,6 +284,25 @@ let qr = null, active = false, cur = null, ordini = [];
 let log = JSON.parse(localStorage.getItem('nt_log') || '[]');
 let lastT = 0;
 
+// ═══ JSONP: bypassa CORS con Google Apps Script ═══
+function gasCall(params) {
+  return new Promise((resolve, reject) => {
+    const cb = '_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const timeout = setTimeout(() => { delete window[cb]; reject(new Error('Timeout')); }, 15000);
+    window[cb] = function(data) {
+      clearTimeout(timeout);
+      delete window[cb];
+      resolve(data);
+    };
+    const url = API + '?' + Object.entries({ ...params, callback: cb }).map(([k,v]) => k + '=' + encodeURIComponent(v)).join('&');
+    const s = document.createElement('script');
+    s.src = url;
+    s.onerror = () => { clearTimeout(timeout); delete window[cb]; reject(new Error('Rete non disponibile')); };
+    document.head.appendChild(s);
+    s.onload = () => s.remove();
+  });
+}
+
 // ═══ INIT ═══
 window.addEventListener('DOMContentLoaded', () => {
   if (API && OP) startApp();
@@ -292,19 +311,19 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // ═══ SETUP ═══
 async function doSetup() {
-  const url = document.getElementById('s-url').value.trim();
+  const url = document.getElementById('s-url').value.trim().replace(/\/+$/, '');
   const op = document.getElementById('s-op').value.trim();
   const err = document.getElementById('s-err');
   err.textContent = '';
   if (!url || !op) { err.textContent = 'Compila entrambi i campi'; return; }
   document.getElementById('s-btn').disabled = true;
   document.getElementById('s-btn').textContent = 'Connessione...';
+  API = url; // temporaneo per gasCall
   try {
-    const r = await fetch(url + '?action=ping');
-    const d = await r.json();
-    if (d.ok) { API = url; OP = op; localStorage.setItem('nt_url', url); localStorage.setItem('nt_op', op); startApp(); }
-    else { err.textContent = 'Errore: ' + (d.error || 'risposta non valida'); }
-  } catch(e) { err.textContent = 'Connessione fallita: ' + e.message; }
+    const d = await gasCall({ action: 'ping' });
+    if (d.ok) { OP = op; localStorage.setItem('nt_url', url); localStorage.setItem('nt_op', op); startApp(); }
+    else { err.textContent = 'Errore: ' + (d.error || 'risposta non valida'); API = ''; }
+  } catch(e) { err.textContent = 'Connessione fallita: ' + e.message; API = ''; }
   document.getElementById('s-btn').disabled = false;
   document.getElementById('s-btn').textContent = 'Connetti';
 }
@@ -342,8 +361,8 @@ async function onScan(text) {
   if (qr && active) { qr.pause(true); active = false; }
   showL('Ricerca ' + text + '...');
   try {
-    const r = await fetch(API + '?action=getOrdine&id=' + encodeURIComponent(text));
-    const d = await r.json(); hideL();
+    const d = await gasCall({ action: 'getOrdine', id: text });
+    hideL();
     if (d.ok) { cur = d.ordine; showRes(d.ordine); } else showNF(text);
   } catch(e) { hideL(); toast('Errore rete', 'error'); resetScan(); }
 }
@@ -375,8 +394,8 @@ function showNF(id) {
 async function doConferma() {
   if (!cur) return; showL('Salvataggio...');
   try {
-    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'confermaCarico', id: cur.id, operatore: OP }) });
-    const d = await r.json(); hideL();
+    const d = await gasCall({ action: 'confermaCarico', id: cur.id, operatore: OP });
+    hideL();
     if (d.ok) { addLog(cur.id, cur.destinatario + ' — ' + cur.luogo_scarico, 'ok'); toast('✓ ' + cur.id + ' caricato!', 'success'); const c = ordini.find(x => x.id === cur.id); if (c) c.scan_stato = 'caricato'; }
     else toast('Errore: ' + d.error, 'error');
   } catch(e) { hideL(); toast('Errore rete', 'error'); }
@@ -385,8 +404,8 @@ async function doConferma() {
 async function doErrore() {
   if (!cur) return; showL('Segnalazione...');
   try {
-    const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ action: 'segnalaErrore', id: cur.id, operatore: OP, note: 'Bancale sbagliato' }) });
-    const d = await r.json(); hideL();
+    const d = await gasCall({ action: 'segnalaErrore', id: cur.id, operatore: OP, note: 'Bancale sbagliato' });
+    hideL();
     if (d.ok) { addLog(cur.id, cur.destinatario + ' — ' + cur.luogo_scarico, 'err'); toast('✕ Errore segnalato', 'error'); if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]); }
     else toast('Errore: ' + d.error, 'error');
   } catch(e) { hideL(); toast('Errore rete', 'error'); }
@@ -401,7 +420,7 @@ function resetScan() {
 async function loadOrdini() {
   document.getElementById('ordini-list').innerHTML = '<div style="text-align:center;padding:40px;color:var(--dim)">Caricamento...</div>';
   try {
-    const r = await fetch(API + '?action=getOrdini'); const d = await r.json();
+    const d = await gasCall({ action: 'getOrdini' });
     if (d.ok) { ordini = d.ordini; renderOrdini(); document.getElementById('d-dot').classList.remove('offline'); }
     else document.getElementById('ordini-list').innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">' + d.error + '</div>';
   } catch(e) { document.getElementById('ordini-list').innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">Offline</div>'; document.getElementById('d-dot').classList.add('offline'); }
